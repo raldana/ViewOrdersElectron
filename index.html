@@ -84,7 +84,7 @@
                 </div>
                 <div>
                     <div>
-                        <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#myJobModal" onclick="submitOrder(); return false;" disabled>Submit</button>
+                        <button type="button" class="btn btn-primary" id="submitButton" data-toggle="modal" data-target="#myJobModal" onclick="submitOrder(); return false;" disabled>Submit</button>
                     </div>
                 </div>
             </div>  <!-- row...               -->
@@ -175,6 +175,8 @@
                 if (myOrderType == 'A' || myOrderType == "O") {
                     formatOrderNumber(myOrderNumber, myOrderType);
                 };
+                
+                enableDisableSubmit();
             };
 
             // re-format order number (add leading zeroes if order number is less than 9 chars)
@@ -194,6 +196,7 @@
                 var myOrderType = orderTypeSelector.value;
                 document.getElementById("submitOrderType").setAttribute("data-value", myOrderType);
                 resetOrderNumber();
+                enableDisableSubmit();
             };
             
             // reset order number when order type selector is changed
@@ -203,19 +206,32 @@
 
             // enable/disable Connect button
             function enableDisableConnect() {
-                ipcTestRenderer.send('consoleLog', 'enabledisable');
                 var myServerAddr = document.getElementById("serverAddrText").value;
                 var myDBName = document.getElementById("dbNameText").value;
 
                 if (myServerAddr && myDBName) {
-                    ipcTestRenderer.send('consoleLog', 'enable');
-                    $('#connectButton').prop('disable', false);  
+                    $('#connectButton').prop('disabled', false);  
                 } else {
-                    ipcTestRenderer.send('consoleLog', 'disable');
-                    $('#connectButton').prop('disable', true);
+                    $('#connectButton').prop('disabled', true);
                 };
             };
 
+            // enable/disable Submit button
+            function enableDisableSubmit() {
+                ipcTestRenderer.send('consoleLog', 'enabledisable');
+                var myServerAddr = document.getElementById("serverAddrText").value;
+                var myDBName = document.getElementById("dbNameText").value;
+                var orderType = document.getElementById("orderTypeSelector").value;
+                var orderNumber = document.getElementById("orderNumberText").value;
+
+                if (myServerAddr && myDBName && orderType && orderNumber) {
+                    ipcTestRenderer.send('consoleLog', 'enable');
+                    $('#submitButton').prop('disabled', false);  
+                } else {
+                    ipcTestRenderer.send('consoleLog', 'disable');
+                    $('#submitButton').prop('disabled', true);
+                };
+            };
         });
         
 

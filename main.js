@@ -72,17 +72,18 @@ function testConn(config) {
   var sql = require('mssql');
   console.log(config);
 
-  var isConnected = false;
+  var isConnected;
 
-  sql.connect(config, function (err) {
-    if (err !== null) {
-      console.log(err);
-    } else {
-      console.log('connected!');
-      isConnected = true;
-    };
+  sql.connect(config).then(function() {
+    isConnected = true;
+  }).catch(function(err) {
+    isConnected = false;
   });
 
+  console.log("Connect state" + isConnected)
+  if (err !== null) {
+    console.log(err);
+  }
   sql.close();
 };
 
