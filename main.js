@@ -8,10 +8,14 @@ const BrowserWindow = electron.BrowserWindow
 require('electron-reload')(__dirname);
 
 // Module ipc for inter-process communication
-const ipcMain = require('electron').ipcMain
+const ipcMain = require('electron').ipcMain;
 
-// sql connection
-//const sendBatch = require('./js/sendBatch')
+// javascript files
+var jsconn = require('./js/connfuncs.js');
+var jsbatch = require('./js/batchfuncs.js');
+var jsinvoice = require('./js/invoicefuncs.js');
+var jsorder = require('./js/orderfuncs.js');
+var jsfs = require('./js/fsfuncs.js');
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -32,60 +36,9 @@ function createWindow () {
     // Dereference the window object, usually you would store windows
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
-    mainWindow = null
+    mainWindow = null;
   })
 }
-
-function sendBatch(orderNo, orderType, config) {
-  var sql = require('mssql');
-  console.log(config);
-
-  sql.connect(config, function (err) {
-    if (err !== null) {
-      console.log(err);
-    }
-
-    var request = new sql.Request();
-    request.input('OrderNumber', sql.VarChar(20), orderNo);
-    request.input('OrderType', sql.Char, orderType);
-    request.input('PrinterID', sql.VarChar(200), '');
-    request.output('BatchID', sql.Int, 0);
-    request.execute('odCreateDefaultJobAP')
-      .then( function(recordsets, BatchID) {
-        console.log('BatchID:' + request.parameters.BatchID.value);
-      })
-      .catch(function (err) {
-        console.log(err);
-      });
-    
-    sql.close();
-
-    //if (request.parameters.BatchID.value != null) {
-     // console.log('BatchID:' + request.parameters.BatchID.value);
-    //}
-
-  });
-
-};
-
-function testConn(config) {
-  var sql = require('mssql');
-  console.log(config);
-
-  var isConnected;
-
-  sql.connect(config).then(function() {
-    isConnected = true;
-  }).catch(function(err) {
-    isConnected = false;
-  });
-
-  console.log("Connect state" + isConnected)
-  if (err !== null) {
-    console.log(err);
-  }
-  sql.close();
-};
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -115,17 +68,34 @@ app.on('activate', function () {
 // send batch
 ipcMain.on('sendBatch', function(event, orderNumber, orderType, config) {
   console.log('sending batch...');
-  sendBatch(orderNumber, orderType, config);
+  jsbatch.sendBatch(event, orderNumber, orderType, config);
 });
 
 // test sql connection
 ipcMain.on('testConn', function(event, config) {
   console.log('testing sql connection...');
-  testConn(config);
+  jsconn.testConn(config, event);   // js/connfuncs.js
 });
 
-// debug console
+// get order file name
+ipcMain.on('getOrderViewFileName', function(event, config, orderNumber, orderType) {
+  //console.log('getting file name...');
+  //console.log(config);
+  if (orderType == 'A' || orderType == 'O') {
+    jsinvoice.getInvoiceFileName(event, config, orderNumber);
+  } else {
+    jsorder.getOrderFileName(event, orderNumber, orderType);
+  };
+  
+});
+
+// debug console function for use by renderer processes
 ipcMain.on('consoleLog', function(event, msg) {
   console.log(msg);
 });
 
+// watch for file
+ipcMain.on('watchFile', function (event, fname) {
+  console.log('started watching for file: ' + fname);
+  jsfs.watchFile(event, fname);
+});

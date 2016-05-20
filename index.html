@@ -25,6 +25,9 @@
     <!-- Bootstrap jQuery -->
     <script src="js/bootstrap.min.js"></script>
     
+    <!-- script for this -->
+    <script src="js/index.js"></script>
+    
 </head>
 
 <body>
@@ -57,7 +60,7 @@
                 </div>
                 <div>
                     <div>
-                        <button type="button" class="btn btn-primary" id="connectButton" data-toggle="modal" data-target="#myModal" onclick="connectToDB(); return false;" disabled>Connect</button>&nbsp;
+                        <button type="button" class="btn btn-primary" id="connectButton" data-toggle="modal" data-target="#myModal" onclick="connectToDB(); return false;">Connect</button>&nbsp;
                         <label class="control-label" name="connStatusLabel" id="connStatusText" style="color: red">Disconnected</label>
                     </div>
                 </div>
@@ -79,12 +82,13 @@
                 </div>
                 <div>
                     <label class="control-label">Order Number</label>
-                    <input type="text" class="form-control orderNumber" name="orderNumber" id="orderNumberText"/>
+                    <input type="text" class="form-control orderNumber" name="orderNumber" id="orderNumberText" required/>
                     <br/>
                 </div>
                 <div>
                     <div>
-                        <button type="button" class="btn btn-primary" id="submitButton" data-toggle="modal" data-target="#myJobModal" onclick="submitOrder(); return false;" disabled>Submit</button>
+                        <button type="button" class="btn btn-primary" id="submitButton" data-toggle="modal" data-target="#myJobModal" onclick="submitOrder(); return false;">Submit</button>
+                        <!-- data-target="#myJobModal"  -->
                     </div>
                 </div>
             </div>  <!-- row...               -->
@@ -149,15 +153,18 @@
             var ipcTestRenderer = require('electron').ipcRenderer;
             var hasOwnProperty = Object.prototype.hasOwnProperty;
 
-            document.getElementById("serverAddrText").addEventListener("blur", enableDisableConnect);
-            document.getElementById("dbNameText").addEventListener("blur", enableDisableConnect);
+            //document.getElementById("serverAddrText").addEventListener("blur", enableDisableConnect);
+            //document.getElementById("dbNameText").addEventListener("blur", enableDisableConnect);
             document.getElementById("orderNumberText").addEventListener("blur", saveOrderNumber);
             document.getElementById("orderTypeSelector").addEventListener("change", saveOrderType);
+            document.getElementById("connectButton").addEventListener("keypress", connectToDB);
 
             // set autofocus on modal dialogs
             $('.modal').on('shown.bs.modal', function() {
                 $(this).find('[autofocus]').focus();
             });
+            
+            //setTimeout(function() {$('#myJobModal').modal('hide');}, 2000);
             
             // zero fill a value
             function paddy(n, p, c) {
@@ -218,17 +225,14 @@
 
             // enable/disable Submit button
             function enableDisableSubmit() {
-                ipcTestRenderer.send('consoleLog', 'enabledisable');
                 var myServerAddr = document.getElementById("serverAddrText").value;
                 var myDBName = document.getElementById("dbNameText").value;
                 var orderType = document.getElementById("orderTypeSelector").value;
                 var orderNumber = document.getElementById("orderNumberText").value;
 
                 if (myServerAddr && myDBName && orderType && orderNumber) {
-                    ipcTestRenderer.send('consoleLog', 'enable');
                     $('#submitButton').prop('disabled', false);  
                 } else {
-                    ipcTestRenderer.send('consoleLog', 'disable');
                     $('#submitButton').prop('disabled', true);
                 };
             };
@@ -245,12 +249,13 @@
             document.getElementById("dbNameLabel").innerHTML = myDBName;
             document.getElementById("serverAddrLabel").innerHTML = myServerAddr;
             
+/*            
             // change the connect status text/color
             var myStatus = document.getElementById("connStatusText");
             myStatus.style.color = "green";
             myStatus.innerHTML = "Connected";
             document.getElementById("connectButton").innerHTML = "Disconnect";
-            
+*/            
             // save to document properties
             document.getElementById("loginServerAddr").setAttribute("data-value", myServerAddr);
             document.getElementById("loginDBName").setAttribute("data-value", myDBName);
@@ -272,10 +277,25 @@
         function testConn() {
             var ipcTestRenderer = require('electron').ipcRenderer;
             var config = buildConfig();
+            var myStatus = document.getElementById("connStatusText");
             
             if (config.user && config.password && config.server && config.database) {
                 ipcTestRenderer.send('testConn', config);
             };
+            
+            ipcTestRenderer.on('testConnReply', function(event, connectState) {
+               if (connectState == true) {
+                    // change the connect status text/color
+                    myStatus.style.color = "green";
+                    myStatus.innerHTML = "Connected";
+                    document.getElementById("connectButton").innerHTML = "Disconnect";
+               } else {
+                    // change the connect status text/color
+                    myStatus.style.color = "red";
+                    myStatus.innerHTML = "Connect failed";
+                    document.getElementById("connectButton").innerHTML = "Connect";
+               }; 
+            });
         };
 
         function isEmpty(obj) {
@@ -298,6 +318,7 @@
             return true;
         };
 
+/*
         function buildConfig() {
             //alert("starting buildConfig");
             var sqlConfig = {};
@@ -318,7 +339,7 @@
             
             return sqlConfig;
         };
-
+*/
         function submitOrder(){
             // define the electron ipc object for the renderer process
             var ipcRenderer = require('electron').ipcRenderer;
@@ -342,11 +363,35 @@
             var myConfig = buildConfig(); 
             
             // call sql stored proc to insert row to job queue/batches
-            if (config.user && config.password && config.server && config.database & myOrderType & myOrderNumber) {
-                ipcRenderer.send('sendBatch', myOrderNumber, myOrderType, myConfig);
-            };
+            ipcRenderer.send('sendBatch', myOrderNumber, myOrderType, myConfig);
+            
+            // now get the file name for the order so we can watch for it
+            ipcRenderer.on('notifyBatchReply', function(event, batchID) {
+                ipcRenderer.send('consoleLog', 'Batch: ' + batchID + ' reply is received');
+                getOrderViewFileName(myOrderNumber, myOrderType);
+            });
+            
+            // write to the view pane
+            //viewOrderPane
+            document.getElementById("viewOrderPane").innerHTML = "Waiting on order: " + myOrderNumber;
         };
-       
+
+/*
+        function getOrderViewFileName(orderNumber, orderType) {
+            var ipcRenderer = require('electron').ipcRenderer;
+            var config = buildConfig(); 
+
+            ipcRenderer.send('getOrderViewFileName', config, orderNumber, orderType);
+
+            ipcRenderer.on('orderViewFileNameReply', function(event, fileName) {
+                ipcRenderer.send('watchFile', fileName);
+            });
+            
+            ipcRenderer.on('watchFileReply', function(event, fileName) {
+                alert('file: ' + fileName + ' was created');
+            });
+        };
+*/
     </script>
    
 </body>
