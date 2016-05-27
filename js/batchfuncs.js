@@ -22,7 +22,7 @@ function sendBatch(event, orderNo, orderType, config) {
         console.log(err);
       });
     
-    //sql.close();
+    sql.close();
 
   });
 

@@ -1,5 +1,5 @@
 // Module ipc for inter-process communication
-const ipcMain = require('electron').ipcMain;
+var ipcMain = require('electron').ipcMain;
 
 function testConn(config, event) {
   

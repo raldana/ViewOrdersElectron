@@ -28,21 +28,18 @@
     <!-- script for this -->
     <script src="js/index.js"></script>
     
+    
 </head>
 
 <body>
     <div id="loginServerAddr" style="display:none" data-value=""></div> 
-    <div id="loginDBName" style="display:none" data-value=""></div> 
+    <div id="loginDBName" style="display:none" data-value=""></div>
+    <div id="loginAuthType" style="display:none" data-value=""></div>
     <div id="loginUserID" style="display:none" data-value=""></div> 
     <div id="loginUserPswd" style="display:none" data-value=""></div>
     <div id="submitOrderType" style="display:none" data-value="A"></div>
     <div id="submitOrderNumber" style="display:none" data-value=""></div> 
 
-<!--
-    <div id="top-bar">
-            <a href="#"><i class="fa fa-user">View OSS360 Order</i></a>
-    </div>
--->
     <!-- Order submittal form (db connection too)  -->
     <div id="wrapper">
         <div id="side-nav">
@@ -88,16 +85,16 @@
                 <div>
                     <div>
                         <button type="button" class="btn btn-primary" id="submitButton" data-toggle="modal" data-target="#myJobModal" onclick="submitOrder(); return false;">Submit</button>
-                        <!-- data-target="#myJobModal"  -->
                     </div>
                 </div>
             </div>  <!-- row...               -->
     </div>
 
    
-    <form id="viewOrderPane" class="container">
-        
-    </form>
+    <div id="viewOrderPane" class="container">
+       <!-- <iframe id=viewOrderIframe src="web/viewer.html"></iframe> -->
+       <iframe id=viewOrderIframe src="" display:none></iframe>
+    </div>
 
     <!-- DB connect modal -->
     <div class="modal fade" id="myModal" role="dialog" aria-labelledby="myModalLabel"> <!-- tabindex="-1" -->
@@ -115,9 +112,20 @@
                     <label  class="control-label" id="dbNameLabel"></label>
                     <br/>
                     <br/>
+
+                    <label class="control-label" style="display:none">Authentication</label>
+                    <div class="selectContainer"  style="display:none">
+                        <select class="form-control" name="authType" id="authTypeSelector" autofocus>
+                            <option id="optionWinAuth" value="W">Windows Authentication</option>
+                            <option id="optionSQLAuth" value="S">SQL Server</option>
+                        </select>
+                    </div>
+                    <br  style="display:none"/>
                     <label class="control-label">User id</label>
                     <input type="text" class="form-control" name="userName" id="userNameText" autofocus/>
                     <br/>
+
+
                     <label class="control-label">Password</label>
                     <input type="password" class="form-control" name="userPswd" id="userPswdText"/>
                 </div>
@@ -141,7 +149,7 @@
                     <label class="control-label" id="orderSubmittedLabel"></label>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-dismiss="modal" >Close</button>
+                    <button type="button" class="btn btn-primary" data-dismiss="modal" autofocus >Close</button>
                 </div>
             </div>
         </div>
@@ -149,8 +157,11 @@
 
     <script>
         $(document).ready(function() {
-
-            var ipcTestRenderer = require('electron').ipcRenderer;
+            var ipcIndexRenderer = require('electron').ipcRenderer;
+            ipcIndexRenderer.on('shutdownApp', function() {
+               ipcIndexRenderer.send('consoleLog', 'received shutdown from index.html'); 
+            });
+            
             var hasOwnProperty = Object.prototype.hasOwnProperty;
 
             //document.getElementById("serverAddrText").addEventListener("blur", enableDisableConnect);
@@ -158,14 +169,27 @@
             document.getElementById("orderNumberText").addEventListener("blur", saveOrderNumber);
             document.getElementById("orderTypeSelector").addEventListener("change", saveOrderType);
             document.getElementById("connectButton").addEventListener("keypress", connectToDB);
+            document.getElementById("authTypeSelector").addEventListener("change", enableDisableAuth);
+
+            // when auth type changes in db connect modal
+            $('authTypeSelector').on('change', function (e) {
+                var optionSelected = $("option:selected", this);
+                var valueSelected = this.value;
+                document.getElementById("loginAuthType").setAttribute("data-value", valueSelected);
+            });
 
             // set autofocus on modal dialogs
             $('.modal').on('shown.bs.modal', function() {
                 $(this).find('[autofocus]').focus();
             });
             
-            //setTimeout(function() {$('#myJobModal').modal('hide');}, 2000);
+            // resize PDF viewer div when window is resized
+            $( window ).resize(function() {
+                //$( "#log" ).append( "<div>Handler for .resize() called.</div>" );
+                resizePDFViewer();
+            });            
             
+           
             // zero fill a value
             function paddy(n, p, c) {
                 var pad_char = typeof c !== 'undefined' ? c : '0';
@@ -180,7 +204,9 @@
                 document.getElementById("submitOrderType").setAttribute("data-value", myOrderType);
                 
                 if (myOrderType == 'A' || myOrderType == "O") {
-                    formatOrderNumber(myOrderNumber, myOrderType);
+                    if (myOrderNumber) {
+                        formatOrderNumber(myOrderNumber, myOrderType);
+                    };
                 };
                 
                 enableDisableSubmit();
@@ -236,162 +262,28 @@
                     $('#submitButton').prop('disabled', true);
                 };
             };
-        });
-        
-
-        // connect to db
-        function connectToDB(){
-            // get the server address and db name
-            var myServerAddr = document.getElementById("serverAddrText").value;
-            var myDBName = document.getElementById("dbNameText").value;
             
-            // update the text for the db connect modal
-            document.getElementById("dbNameLabel").innerHTML = myDBName;
-            document.getElementById("serverAddrLabel").innerHTML = myServerAddr;
-            
-/*            
-            // change the connect status text/color
-            var myStatus = document.getElementById("connStatusText");
-            myStatus.style.color = "green";
-            myStatus.innerHTML = "Connected";
-            document.getElementById("connectButton").innerHTML = "Disconnect";
-*/            
-            // save to document properties
-            document.getElementById("loginServerAddr").setAttribute("data-value", myServerAddr);
-            document.getElementById("loginDBName").setAttribute("data-value", myDBName);
-        };
+            // enable/disable user name/password in db connect modal
+            function enableDisableAuth() {
+                var authType = document.getElementById("authTypeSelector").value;
 
-        // save the db config object (server name, db, etc.)
-        function saveConfig() {
-            // get the user and password
-            var myUserName = document.getElementById("userNameText").value;
-            var myPasswordText = document.getElementById("userPswdText").value;
-
-            document.getElementById("loginUserID").setAttribute("data-value", myUserName);
-            document.getElementById("loginUserPswd").setAttribute("data-value", myPasswordText);
-
-            testConn();
-        };
-
-    
-        function testConn() {
-            var ipcTestRenderer = require('electron').ipcRenderer;
-            var config = buildConfig();
-            var myStatus = document.getElementById("connStatusText");
-            
-            if (config.user && config.password && config.server && config.database) {
-                ipcTestRenderer.send('testConn', config);
-            };
-            
-            ipcTestRenderer.on('testConnReply', function(event, connectState) {
-               if (connectState == true) {
-                    // change the connect status text/color
-                    myStatus.style.color = "green";
-                    myStatus.innerHTML = "Connected";
-                    document.getElementById("connectButton").innerHTML = "Disconnect";
-               } else {
-                    // change the connect status text/color
-                    myStatus.style.color = "red";
-                    myStatus.innerHTML = "Connect failed";
-                    document.getElementById("connectButton").innerHTML = "Connect";
-               }; 
-            });
-        };
-
-        function isEmpty(obj) {
-
-            // null and undefined are "empty"
-            if (obj == null) return true;
-
-            // Assume if it has a length property with a non-zero value
-            // that that property is correct.
-            if (obj.length > 0)    return false;
-            if (obj.length === 0)  return true;
-
-            // Otherwise, does it have any properties of its own?
-            // Note that this doesn't handle
-            // toString and valueOf enumeration bugs in IE < 9
-            for (var key in obj) {
-                if (hasOwnProperty.call(obj, key)) return false;
-            }
-
-            return true;
-        };
-
-/*
-        function buildConfig() {
-            //alert("starting buildConfig");
-            var sqlConfig = {};
-            var userName = document.getElementById("loginUserID").getAttribute("data-value");
-            var passwordText = document.getElementById("loginUserPswd").getAttribute("data-value");
-            var serverName = document.getElementById("loginServerAddr").getAttribute("data-value");
-            var dbName = document.getElementById("loginDBName").getAttribute("data-value");
-
-            if (userName && passwordText && serverName && dbName) {
-                sqlConfig = {
-                    user: userName,
-                    password: passwordText,
-                    server: serverName,
-                    database: dbName
+                if (authType == 'S') {
+                    $('#userNameText').prop('disabled', false); 
+                    $('#userPswdText').prop('disabled', false);  
+                } else {
+                    $('#userNameText').prop('disabled', true); 
+                    $('#userPswdText').prop('disabled', true);  
                 };
+            };
 
+            // resize pdf viewer if window is resized
+            function resizePDFViewer() {
+                var width = $(window).width()-251-25; 
+                $("#viewOrderPane").width(width);
             };
             
-            return sqlConfig;
-        };
-*/
-        function submitOrder(){
-            // define the electron ipc object for the renderer process
-            var ipcRenderer = require('electron').ipcRenderer;
-            
-            // get the Order Type selector's value and associated text of the option
-            var orderTypeSelector = document.getElementById("orderTypeSelector");
-            var myOrderType = orderTypeSelector.value;
-            var optionText = orderTypeSelector.options[orderTypeSelector.selectedIndex].text;
-            
-            // get the order number
-            var myOrderNumber = document.getElementById("orderNumberText").value;
+        });
 
-            // update the text for the job submitted modal
-            document.getElementById("orderSubmittedLabel").innerHTML = myOrderNumber + " [" + optionText + "]"; //myOrderNumber;
-            
-            // save to document properties
-            document.getElementById("submitOrderType").setAttribute("data-value", myOrderType);
-            document.getElementById("submitOrderNumber").setAttribute("data-value", myOrderNumber);
-            
-            // build sql connect config object
-            var myConfig = buildConfig(); 
-            
-            // call sql stored proc to insert row to job queue/batches
-            ipcRenderer.send('sendBatch', myOrderNumber, myOrderType, myConfig);
-            
-            // now get the file name for the order so we can watch for it
-            ipcRenderer.on('notifyBatchReply', function(event, batchID) {
-                ipcRenderer.send('consoleLog', 'Batch: ' + batchID + ' reply is received');
-                getOrderViewFileName(myOrderNumber, myOrderType);
-            });
-            
-            // write to the view pane
-            //viewOrderPane
-            document.getElementById("viewOrderPane").innerHTML = "Waiting on order: " + myOrderNumber;
-        };
-
-/*
-        function getOrderViewFileName(orderNumber, orderType) {
-            var ipcRenderer = require('electron').ipcRenderer;
-            var config = buildConfig(); 
-
-            ipcRenderer.send('getOrderViewFileName', config, orderNumber, orderType);
-
-            ipcRenderer.on('orderViewFileNameReply', function(event, fileName) {
-                ipcRenderer.send('watchFile', fileName);
-            });
-            
-            ipcRenderer.on('watchFileReply', function(event, fileName) {
-                alert('file: ' + fileName + ' was created');
-            });
-        };
-*/
     </script>
    
 </body>
