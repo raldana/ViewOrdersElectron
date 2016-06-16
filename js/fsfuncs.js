@@ -93,8 +93,11 @@ var copyFile = function (event, source, target) {
 var deleteFile = function (event, target) {
     if (target) {
         if (fileExists(target)) {
+            fs.closeSync(target);
             fs.unlinkSync(target);
             console.log("File deleted successfully!");
+        } else {
+            console.log("File not found!");
         };
     };
     if (event) {
@@ -107,10 +110,14 @@ var fileExists = function(event, target) {
   var isExists = false;
   if (target) {
     var fstats = fs.statSync(target);
+    console.log(fstats);
     if (fstats) {
+        isExists = true;
+/*
         if (fstats.isFile()) {
             isExists = true;
         };
+*/
     };
   };
   return isExists;

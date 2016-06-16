@@ -24,17 +24,18 @@
   "homepage": "https://github.com/raldana/vieworderselectron#readme",
   "devDependencies": {
     "bower": "^1.7.9",
-    "electron-prebuilt": "^0.37.8",
+    "electron-prebuilt": "^1.2.3",
+    "electron-reload": "^1.0.0",
     "eslint": "^2.9.0"
   },
   "dependencies": {
     "asyncawait": "^1.0.3",
     "chokidar": "^1.5.0",
-    "electron-prebuilt": "^1.0.1",
-    "electron-reload": "^0.3.0",
     "express": "^4.13.4",
     "fibers": "^1.0.13",
+    "msnodesqlv8": "^0.1.45",
     "mssql": "^3.3.0",
-    "pdf-view": "^1.0.1"
+    "pdf-view": "^1.0.1",
+    "remote": "^0.2.6"
   }
 }

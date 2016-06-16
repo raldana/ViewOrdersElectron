@@ -1,4 +1,4 @@
-var remote = require('remote');
+var remote = require('electron').remote;
 
 var ipcRenderer = require('electron').ipcRenderer;
 
@@ -28,7 +28,8 @@ function connectToDB () {
 // save the db config object (server name, db, etc.)
 function saveConfig () {
     // get the auth type (Windows or SQL Server)
-    var authType = document.getElementById("loginAuthType").value;
+    var authType = document.getElementById("loginAuthType").getAttribute("data-value");
+    // ipcRenderer.send('consoleLog', "saveConfig() login auth type: " + loginAuthType);
     
     // get the user and password
     var myUserName = document.getElementById("userNameText").value;
@@ -36,15 +37,17 @@ function saveConfig () {
 
     document.getElementById("loginUserID").setAttribute("data-value", myUserName);
     document.getElementById("loginUserPswd").setAttribute("data-value", myPasswordText);
+    document.getElementById("loginAuthType").setAttribute("data-value", authType);
 
-    testConn();
+    testConn(authType);
 };
 
-function testConn() {
+function testConn (loginAuthType) {
     var config = buildConfig();
     var myStatus = document.getElementById("connStatusText");
+    //ipcRenderer.send('consoleLog', "login auth type: " + loginAuthType);
     
-    if (config.user && config.password && config.server && config.database) {
+    if (loginAuthType == "W" || (config.user && config.password && config.server && config.database)) {
         ipcRenderer.send('testConn', config);
     };
     
@@ -88,6 +91,9 @@ function submitOrder () {
     
     // set isFileDone to false each time we submit a job
     isFileDone = false;
+    
+    // remove old listeners
+    //ipcRenderer.removeListener('watchFileReply', fileName);
     
     // clear out any old files we have viewed first
     var tmpFile = remote.getGlobal('sharedObj').tempFile;
@@ -144,9 +150,12 @@ function buildConfig () {
     var passwordText = document.getElementById("loginUserPswd").getAttribute("data-value");
     var serverName = document.getElementById("loginServerAddr").getAttribute("data-value");
     var dbName = document.getElementById("loginDBName").getAttribute("data-value");
+    var dbDriver = document.getElementById("dbDriver").getAttribute("data-value");
 
+/*
     if (userName && passwordText && serverName && dbName) {
         sqlConfig = {
+            driver: dbDriver,
             user: userName,
             password: passwordText,
             server: serverName,
@@ -154,13 +163,16 @@ function buildConfig () {
         };
 
     };
+*/
 
-/*
     if (authType == "W") {
             sqlConfig = {
-                domain: authType,
+                driver: dbDriver,
                 server: serverName,
-                database: dbName
+                database: dbName,
+                options: {
+                    trustedConnection: true
+                }
             };
         
     } else {
@@ -174,7 +186,7 @@ function buildConfig () {
 
         };
     };
-*/
+
     
     return sqlConfig;
 };
@@ -188,7 +200,7 @@ function getOrderViewFileName (orderNumber, orderType) {
         ipcRenderer.send('deleteFile', fileName);
         ipcRenderer.on('deleteFileReply', function(event, fileName) {
             ipcRenderer.send('watchFile', fileName);
-            ipcRenderer.on('watchFileReply', function(event, fileName) {
+            ipcRenderer.once('watchFileReply', function(event, fileName) {
                 console.log('getOrderViewFileName - found target: ' + fileName)
                 if (isFileDone == false) {
                     isFileDone = true;
@@ -261,3 +273,35 @@ function resetViewOrderPane() {
         ipcRenderer.send('consoleLog', 'resetting iframe');
     };
 };
+
+function saveOS() {
+    var dbDriver = "";
+
+    var platformOS = remote.getGlobal('sharedObj').platformOS;
+
+    if (platformOS == "win32") {
+        dbDriver = "msnodesqlv8";
+    } else {
+        dbDriver = "tedious";
+    };
+
+    document.getElementById("platformOS").setAttribute("data-value", platformOS);
+    document.getElementById("dbDriver").setAttribute("data-value", dbDriver);
+    //ipcRenderer.send("consoleLog", "renderer says OS is: " + platformOS);
+    if (platformOS == "win32") {
+        // default authorization type to "W" (windows authentication)
+        document.getElementById("loginAuthType").setAttribute("data-value", "W");
+
+        // update connect db div to show Windows Authorization as default
+        showWindowsAuth();
+    } ;
+
+}
+
+function showWindowsAuth() {
+    document.getElementById('authSelectorLabel').style.display = 'block';
+    document.getElementById('authSelector').style.display = 'block';
+    document.getElementById('authSelectorBreak').style.display = 'block';
+    $('#userNameText').prop('disabled', true);
+    $('#userPswdText').prop('disabled', true); 
+}

@@ -1,8 +1,10 @@
-const electron = require('electron')
+'use strict';
+
+const electron = require('electron');
 // Module to control application life.
-const app = electron.app
+const app = electron.app;
 // Module to create native browser window.
-const BrowserWindow = electron.BrowserWindow
+const BrowserWindow = electron.BrowserWindow;
 
 /*
 // for dev: auto re-loading when source code changes
@@ -23,18 +25,29 @@ var jsorder = require('./js/orderfuncs.js');
 var jsfs = require('./js/fsfuncs.js');
 
 // global shared object
-global.sharedObj = {tempFile: null};
+global.sharedObj = {
+    tempFile: null,
+    platformOS: null
+  };
+
+// get process platform
+const platformOS = process.platform;
+const osVersion = require('os').release();
+const envVersion = process.version;
+console.log('OS:' + platformOS + ', version: ' + osVersion);
+console.log('NodeJS version: ' + envVersion);
+global.sharedObj.platformOS = platformOS;
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
-let mainWindow
+let mainWindow;
 
 function createWindow () {
   // Create the browser window.
-  mainWindow = new BrowserWindow({width: 1024, height: 768})
+  mainWindow = new BrowserWindow({width: 1024, height: 768});
 
   // and load the index.html of the app.
-  mainWindow.loadURL(`file://${__dirname}/index.html`)
+  mainWindow.loadURL(`file://${__dirname}/index.html`);
 
   // Open the DevTools.
   //mainWindow.webContents.openDevTools()
@@ -52,14 +65,14 @@ function createWindow () {
     var tmpFileExists = false;
     console.log('global tmpFile is: ' + tmpFile);
     if (tmpFile) {
-      console.log('deleting global tmpFile: ' + tmpFile);
       tmpFileExists = jsfs.fileExists(null, tmpFile);
       if (tmpFileExists) {
+        console.log('deleting global tmpFile at shutdown: ' + tmpFile);
         jsfs.deleteFile(null, tmpFile);
       };
     };
   });
-};
+}
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
