@@ -45,7 +45,6 @@ function saveConfig () {
 function testConn (loginAuthType) {
     var config = buildConfig();
     var myStatus = document.getElementById("connStatusText");
-    //ipcRenderer.send('consoleLog', "login auth type: " + loginAuthType);
     
     if (loginAuthType == "W" || (config.user && config.password && config.server && config.database)) {
         ipcRenderer.send('testConn', config);
@@ -57,7 +56,6 @@ function testConn (loginAuthType) {
             myStatus.style.color = "green";
             myStatus.innerHTML = "Connected";
             document.getElementById("connectButton").innerHTML = "Disconnect";
-            //document.getElementById("orderNumber").focus();
         } else {
             // change the connect status text/color
             myStatus.style.color = "red";
@@ -88,13 +86,12 @@ function isEmpty(obj) {
 };
 
 function submitOrder () {
+    ipcRenderer.send('consoleLog', '-----------------------');
+    ipcRenderer.send('consoleLog', 'submitOrder is launched');
     
     // set isFileDone to false each time we submit a job
     isFileDone = false;
-    
-    // remove old listeners
-    //ipcRenderer.removeListener('watchFileReply', fileName);
-    
+
     // clear out any old files we have viewed first
     var tmpFile = remote.getGlobal('sharedObj').tempFile;
     console.log('var tmpFile: ' + tmpFile);
@@ -109,7 +106,8 @@ function submitOrder () {
     var optionText = orderTypeSelector.options[orderTypeSelector.selectedIndex].text;
     
     // get the order number
-    var myOrderNumber = document.getElementById("orderNumberText").value;
+    var myOrderNumber = document.getElementById("submitOrderNumber").getAttribute("data-value");
+    ipcRenderer.send('consoleLog', 'Order Number is: ' + myOrderNumber + ' will be submitted' + '\n');
 
     // reset view pane
     resetViewOrderPane();
@@ -119,12 +117,7 @@ function submitOrder () {
         '<i class="fa fa-gear fa-spin" style="font-size:24px"></i>';
 
     // update the text for the job submitted modal
-    document.getElementById("orderSubmittedLabel").innerHTML = myOrderNumber + " [" + optionText + "]"
-    ; //myOrderNumber;
-    
-    // save to document properties
-    document.getElementById("submitOrderType").setAttribute("data-value", myOrderType);
-    document.getElementById("submitOrderNumber").setAttribute("data-value", myOrderNumber);
+    document.getElementById("orderSubmittedLabel").innerHTML = myOrderNumber + " [" + optionText + "]";
     
     // build sql connect config object
     var myConfig = buildConfig(); 
@@ -134,8 +127,8 @@ function submitOrder () {
     
     // now get the file name for the order so we can watch for it
     ipcRenderer.once('notifyBatchReply', function(event, batchID) {
-        ipcRenderer.send('consoleLog', 'Batch: ' + batchID + ' reply is received');
-        getOrderViewFileName(myOrderNumber, myOrderType);
+        ipcRenderer.send('consoleLog', 'Batch: ' + batchID + ' reply is received' + '\n');
+        getDisplayFileName(myOrderNumber, myOrderType);
     });
     
     // write to the view pane
@@ -151,19 +144,6 @@ function buildConfig () {
     var serverName = document.getElementById("loginServerAddr").getAttribute("data-value");
     var dbName = document.getElementById("loginDBName").getAttribute("data-value");
     var dbDriver = document.getElementById("dbDriver").getAttribute("data-value");
-
-/*
-    if (userName && passwordText && serverName && dbName) {
-        sqlConfig = {
-            driver: dbDriver,
-            user: userName,
-            password: passwordText,
-            server: serverName,
-            database: dbName
-        };
-
-    };
-*/
 
     if (authType == "W") {
             sqlConfig = {
@@ -191,21 +171,24 @@ function buildConfig () {
     return sqlConfig;
 };
 
-function getOrderViewFileName (orderNumber, orderType) {
-    var config = buildConfig(); 
+function getDisplayFileName (orderNumber, orderType) {
+    var config = buildConfig();
+
+    ipcRenderer.send('consoleLog', '\n' + 'getDisplayFileName order parameter is: ' + orderNumber + '\n');
 
     ipcRenderer.send('getOrderViewFileName', config, orderNumber, orderType);
 
-    ipcRenderer.on('orderViewFileNameReply', function(event, fileName) {
+    ipcRenderer.once('orderViewFileNameReply', function(event, fileName) {
+        ipcRenderer.send('consoleLog','orderViewFileNameReply filename is: ' + fileName + '\n');
         ipcRenderer.send('deleteFile', fileName);
-        ipcRenderer.on('deleteFileReply', function(event, fileName) {
+        ipcRenderer.once('deleteFileReply', function(event, fileName) {
+            ipcRenderer.send('consoleLog','deleteFileReply filename is: ' + fileName + '\n');
             ipcRenderer.send('watchFile', fileName);
             ipcRenderer.once('watchFileReply', function(event, fileName) {
-                console.log('getOrderViewFileName - found target: ' + fileName)
+                ipcRenderer.send('consoleLog','getDisplayFileName - found target: ' + fileName + '\n');
                 if (isFileDone == false) {
                     isFileDone = true;
                     loadPDF(fileName);
-                    //ipcRenderer.removeListener('watchFileReply', fileName);
                 };
             });
             
@@ -249,6 +232,7 @@ function loadPDF(fname) {
         ipcRenderer.send("updateTempFileName", target);
         $('#viewOrderIframe').attr('src', 'web/viewer.html?file=' + uri);
         document.getElementById('viewOrderIframe').style.display = 'block';
+        $('#viewOrderIframe').show();
     });
 };
 
@@ -266,11 +250,13 @@ function fileExists(target) {
 };
 
 function resetViewOrderPane() {
+    ipcRenderer.send('consoleLog', 'resetting iframe');
     var mySrc = $('#viewOrderIframe').attr('src');
+    ipcRenderer.send('consoleLog', 'variable mySrc is: ' + mySrc);
+    //$('#viewOrderIframe').attr('src', '');
     if (mySrc) {
-        $('#viewOrderIframe').style.display = "none";
         $('#viewOrderIframe').attr('src', '');
-        ipcRenderer.send('consoleLog', 'resetting iframe');
+        $('#viewOrderIframe').hide();
     };
 };
 

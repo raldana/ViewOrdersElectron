@@ -210,14 +210,20 @@
             function saveOrderNumber() {
                 var myOrderNumber = document.getElementById("orderNumberText").value;
                 var myOrderType = document.getElementById("orderTypeSelector").value;
-                document.getElementById("submitOrderType").setAttribute("data-value", myOrderType);
+                var prevOrderNumber = document.getElementById("loginAuthType").getAttribute("data-value");
                 
+                // format the number if an invoice number
                 if (myOrderType == 'A' || myOrderType == "O") {
                     if (myOrderNumber) {
-                        formatOrderNumber(myOrderNumber, myOrderType);
+                        myOrderNumber = formatOrderNumber(myOrderNumber, myOrderType);
                     };
                 };
                 
+                // save the order number/order type to our global properties
+                document.getElementById("submitOrderNumber").setAttribute("data-value", myOrderNumber);
+                document.getElementById("submitOrderType").setAttribute("data-value", myOrderType);
+
+                // enable or disable the Submit button as appropriate
                 enableDisableSubmit();
             };
 
@@ -229,7 +235,10 @@
                 if (myOrderType == 'A' || myOrderType == "O") {
                   myOrderNumber = paddy(myOrderNumber, 9, '0');
                   document.getElementById("orderNumberText").value = myOrderNumber;
+                  ipcIndexRenderer.send('consoleLog', 'order number is: ' + myOrderNumber); 
                 };
+
+                return myOrderNumber;
             };
 
             // save the order type

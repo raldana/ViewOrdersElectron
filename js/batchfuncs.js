@@ -2,6 +2,7 @@ var ipcMain = require('electron').ipcMain;
 
 function sendBatch(event, orderNo, orderType, config) {
   var sql = require('mssql');
+  event.sender.send('consoleLog', 'order number in sendBatch is: ' + orderNo);
   //console.log(config);
 
   sql.connect(config, function (err) {

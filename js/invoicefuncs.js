@@ -1,3 +1,4 @@
+
 var sql = require('mssql');
 var folderName = '';
 var imageName = '';
@@ -15,13 +16,14 @@ function notifyOutputName (event, folder, file) {
   
   if (folderName && imageName){
     outputName = folderName + imageName;
+    console.log('notifyOutputName - Output file is: ' + outputName + '\n');
     event.sender.send('orderViewFileNameReply', outputName);
-    //console.log('Output file is: ' + outputName);
   }
 };
 
 // call functions to get output folder and file name
 function getInvoiceFileName(event, config, orderNumber) {
+  console.log('getInvoiceFileName - orderNumber is: ' + orderNumber + '\n');
   sql.connect(config, function (err) {
     if (err !== null) {
         console.log(err);
@@ -65,7 +67,6 @@ function getOutputFileName(event, orderNumber, callback) {
   request.execute('odDisplayInvBuildFileNameAP')
     .then( function(recordsets, DATFileName) {
       outName = request.parameters.DATFileName.value + '.pdf';
-      //console.log('Output file name:' + outName);
       callback(event, folderName, outName) ;
     })
     .catch(function (err) {

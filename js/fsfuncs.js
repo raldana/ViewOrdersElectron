@@ -40,7 +40,7 @@ var watchFile = function(event, watchedFile) {
     })
 
     .once('change', function(path) {
-        console.log('File', path, 'has been changed');
+        console.log('File', path, 'has been changed' + "\n");
         event.sender.send('watchFileReply', path);
         //watcher.unwatch(path);
         watcher.close();
@@ -95,9 +95,9 @@ var deleteFile = function (event, target) {
         if (fileExists(target)) {
             fs.closeSync(target);
             fs.unlinkSync(target);
-            console.log("File deleted successfully!");
+            console.log("File deleted successfully!" + "\n");
         } else {
-            console.log("File not found!");
+            console.log("File not found!" + "\n");
         };
     };
     if (event) {

@@ -34,8 +34,10 @@ global.sharedObj = {
 const platformOS = process.platform;
 const osVersion = require('os').release();
 const envVersion = process.version;
+console.log('startup: ' + Date.now());
 console.log('OS:' + platformOS + ', version: ' + osVersion);
 console.log('NodeJS version: ' + envVersion);
+console.log('------------------------------' + '\n');
 global.sharedObj.platformOS = platformOS;
 
 // Keep a global reference of the window object, if you don't, the window will
