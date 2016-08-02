@@ -1,7 +1,7 @@
 {
   "name": "ViewOrdersElectron",
   "version": "1.0.0",
-  "description": "A minimal Electron application",
+  "description": "An application used to view OSS360 orders (i.e. Access/POS invoices, SOs, etc.)",
   "main": "main.js",
   "scripts": {
     "start": "electron main.js"
@@ -12,11 +12,10 @@
   },
   "keywords": [
     "Electron",
-    "quick",
-    "start",
-    "tutorial"
+    "A360",
+    "OSS360"
   ],
-  "author": "GitHub",
+  "author": "Richard Aldana",
   "license": "CC0-1.0",
   "bugs": {
     "url": "https://github.com/raldana/vieworders/issues"
