@@ -2,8 +2,9 @@ var ipcMain = require('electron').ipcMain;
 
 function sendBatch(event, orderNo, orderType, config) {
   var sql = require('mssql');
-  event.sender.send('consoleLog', 'order number in sendBatch is: ' + orderNo);
-  //console.log(config);
+  //var sessionKey = global.sharedObj.sessionKey;
+  var sessionKey = 0;
+  event.sender.send('consoleLog', 'order number in sendBatch is: ' + orderNo + '\n');
 
   sql.connect(config, function (err) {
     if (err !== null) {
@@ -15,6 +16,7 @@ function sendBatch(event, orderNo, orderType, config) {
     request.input('OrderType', sql.Char, orderType);
     request.input('PrinterID', sql.VarChar(200), '');
     request.output('BatchID', sql.Int, 0);
+    request.input('ActiveSessionKey', sql.Int, sessionKey);
     request.execute('odCreateDefaultJobAP')
       .then( function(recordsets, BatchID) {
         notifyBatchComplete(event, request.parameters.BatchID.value);

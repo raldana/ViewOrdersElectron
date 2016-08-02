@@ -40,7 +40,8 @@
     <div id="submitOrderType" style="display:none" data-value="A"></div>
     <div id="submitOrderNumber" style="display:none" data-value=""></div>
     <div id="platformOS" style="display:none" data-value=""></div>
-    <div id="dbDriver" style="display:none" data-value="tedious"></div> 
+    <div id="dbDriver" style="display:none" data-value="tedious"></div>
+    <!-- <div id="dbDriver" style="display:none" data-value="msnodesql"></div> -->
 
     <!-- Order submittal form (db connection too)  -->
     <div id="wrapper">
@@ -150,10 +151,19 @@
                 <div class="modal-body">
                     <label class="control-label">Job has been submitted for Order:</label>&nbsp;
                     <label class="control-label" id="orderSubmittedLabel"></label>
+                    <br/>
+                    <br/>
+                    <label class="control-label" id="waitingforOrderLabel">waiting for order...</label>
+                    <br/>
+                    <br/>
+                    <div class="progress progress-striped active" style="margin-bottom:0;"><div class="progress-bar" style="width: 100%"></div></div>
+                    <br/>
                 </div>
+<!--
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-primary" data-dismiss="modal" autofocus >Close</button>
+                    <div class="progress progress-striped active" style="margin-bottom:0;"><div class="progress-bar" style="width: 100%"></div></div>
                 </div>
+-->
             </div>
         </div>
     </div>
@@ -162,10 +172,6 @@
         $(document).ready(function() {
             var ipcIndexRenderer = require('electron').ipcRenderer;
 
-            ipcIndexRenderer.on('shutdownApp', function() {
-               ipcIndexRenderer.send('consoleLog', 'received shutdown from index.html'); 
-            });
-            
             var hasOwnProperty = Object.prototype.hasOwnProperty;
 
             //document.getElementById("serverAddrText").addEventListener("blur", enableDisableConnect);
@@ -178,17 +184,6 @@
             // save OS to document variable
             saveOS();
 
-/*
-            // when auth type changes in db connect modal
-            $('authTypeSelector').on('change', function (e) {
-                var optionSelected = $("option:selected", this);
-                var valueSelected = this.value;
-                document.getElementById("loginAuthType").setAttribute("data-value", valueSelected);
-                ipcIndexRenderer.send('consoleLog', 'loginAuthType: ' + valueSelected);
-                //var savedAuth = document.getElementById("loginAuthType").getAttribute("data-value");
-                //ipcIndexRenderer.send('consoleLog', 'loginAuthType: ' + savedAuth);
-            });
-*/
             // set autofocus on modal dialogs
             $('.modal').on('shown.bs.modal', function() {
                 $(this).find('[autofocus]').focus();
@@ -235,7 +230,6 @@
                 if (myOrderType == 'A' || myOrderType == "O") {
                   myOrderNumber = paddy(myOrderNumber, 9, '0');
                   document.getElementById("orderNumberText").value = myOrderNumber;
-                  ipcIndexRenderer.send('consoleLog', 'order number is: ' + myOrderNumber); 
                 };
 
                 return myOrderNumber;
@@ -254,7 +248,6 @@
             function saveAuthType() {
                 var authType = document.getElementById("authTypeSelector").value;
                 document.getElementById("loginAuthType").setAttribute("data-value", authType);
-                //var savedAuth = document.getElementById("loginAuthType").getAttribute("data-value");
                 enableDisableAuth();
             };
 
@@ -291,9 +284,7 @@
             
             // enable/disable user name/password in db connect modal
             function enableDisableAuth() {
-                //var authType = document.getElementById("authTypeSelector").value;
                 var authType = document.getElementById("loginAuthType").getAttribute("data-value");
-                ipcIndexRenderer.send('consoleLog', 'Auth Selector value: ' + authType); 
 
                 if (authType == 'S') {
                     $('#userNameText').prop('disabled', false); 

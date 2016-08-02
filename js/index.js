@@ -4,12 +4,6 @@ var ipcRenderer = require('electron').ipcRenderer;
 
 var isFileDone = false;
 
-// listen for shutdown
-ipcRenderer.on('shutdownApp', function() {
-    console.log('shutting down...');
-    resetViewOrderPane();
-});
-
 // connect to db
 function connectToDB () {
     // get the server address and db name
@@ -86,17 +80,19 @@ function isEmpty(obj) {
 };
 
 function submitOrder () {
-    ipcRenderer.send('consoleLog', '-----------------------');
-    ipcRenderer.send('consoleLog', 'submitOrder is launched');
+    ipcRenderer.send('consoleLog', '\n' + '************ new order *********');
+    ipcRenderer.send('consoleLog', 'submitOrder is launched' + '\n');
     
     // set isFileDone to false each time we submit a job
     isFileDone = false;
+
+    // reset view pane
+    resetViewOrderPane();
 
     // clear out any old files we have viewed first
     var tmpFile = remote.getGlobal('sharedObj').tempFile;
     console.log('var tmpFile: ' + tmpFile);
     if (tmpFile) {
-        console.log('global temp file is: ' + tmpFile);
         ipcRenderer.send('deleteFile', tmpFile);
     };
     
@@ -107,14 +103,7 @@ function submitOrder () {
     
     // get the order number
     var myOrderNumber = document.getElementById("submitOrderNumber").getAttribute("data-value");
-    ipcRenderer.send('consoleLog', 'Order Number is: ' + myOrderNumber + ' will be submitted' + '\n');
-
-    // reset view pane
-    resetViewOrderPane();
-    
-    // show spinner while waiting
-    $('#viewOrderPane').innerHTML = "waiting for order: " + myOrderNumber  + '<br/>' +
-        '<i class="fa fa-gear fa-spin" style="font-size:24px"></i>';
+    ipcRenderer.send('consoleLog', 'Order Number ' + myOrderNumber + ' will be submitted' + '\n');
 
     // update the text for the job submitted modal
     document.getElementById("orderSubmittedLabel").innerHTML = myOrderNumber + " [" + optionText + "]";
@@ -125,15 +114,11 @@ function submitOrder () {
     // call sql stored proc to insert row to job queue/batches
     ipcRenderer.send('sendBatch', myOrderNumber, myOrderType, myConfig);
     
-    // now get the file name for the order so we can watch for it
+    // when we are notified batch is done, log it
     ipcRenderer.once('notifyBatchReply', function(event, batchID) {
         ipcRenderer.send('consoleLog', 'Batch: ' + batchID + ' reply is received' + '\n');
         getDisplayFileName(myOrderNumber, myOrderType);
     });
-    
-    // write to the view pane
-    //viewOrderPane
-    //document.getElementById("viewOrderPane").innerHTML = "Waiting on order: " + myOrderNumber;
 };
 
 function buildConfig () {
@@ -167,25 +152,20 @@ function buildConfig () {
         };
     };
 
-    
+    //ipcRenderer.send('consoleLog', sqlConfig);
     return sqlConfig;
 };
 
 function getDisplayFileName (orderNumber, orderType) {
     var config = buildConfig();
 
-    ipcRenderer.send('consoleLog', '\n' + 'getDisplayFileName order parameter is: ' + orderNumber + '\n');
-
     ipcRenderer.send('getOrderViewFileName', config, orderNumber, orderType);
 
     ipcRenderer.once('orderViewFileNameReply', function(event, fileName) {
-        ipcRenderer.send('consoleLog','orderViewFileNameReply filename is: ' + fileName + '\n');
         ipcRenderer.send('deleteFile', fileName);
         ipcRenderer.once('deleteFileReply', function(event, fileName) {
-            ipcRenderer.send('consoleLog','deleteFileReply filename is: ' + fileName + '\n');
             ipcRenderer.send('watchFile', fileName);
             ipcRenderer.once('watchFileReply', function(event, fileName) {
-                ipcRenderer.send('consoleLog','getDisplayFileName - found target: ' + fileName + '\n');
                 if (isFileDone == false) {
                     isFileDone = true;
                     loadPDF(fileName);
@@ -193,42 +173,18 @@ function getDisplayFileName (orderNumber, orderType) {
             });
             
         });
-/*
-        ipcRenderer.send('consoleLog', 'checking if pdf file exists: ' + fileName);
-        if (fileExists(fileName)) {
-            ipcRenderer.send('deleteFile', fileName);
-        };
-*/
-//        ipcRenderer.send('watchFile', fileName);
-        //ipcRenderer.removeAllListeners('orderViewFileNameReply');
     });
-
-/*    
-    ipcRenderer.on('watchFileReply', function(event, fileName) {
-        console.log('getOrderViewFileName - found target: ' + fileName)
-        if (isFileDone == false) {
-            isFileDone = true;
-            loadPDF(fileName);
-            //ipcRenderer.removeListener('watchFileReply', fileName);
-        }
-    });
-*/
 };
 
 function loadPDF(fname) {
     var source = fname;
-/*
-    // make sure the file doesn't already exist locally (maybe from previous testing)
-    if (fileExists(__dirname + '\\web\\' + require('path').basename(fname))) {
-        ipcRenderer.send("deleteFile", __dirname + '\\web\\' + require('path').basename(fname));
-    };
-*/
+    $('#myJobModal').modal('hide');
+
     var target = 'web/' + require('path').basename(fname);
     ipcRenderer.send("copyFile", source, target);
     ipcRenderer.once('copyFileReply', function(event, target) {
         var newTarget = require('path').basename(target);
         var uri = encodeURIComponent(newTarget);
-        ipcRenderer.send("consoleLog", "got target: " + uri);
         ipcRenderer.send("updateTempFileName", target);
         $('#viewOrderIframe').attr('src', 'web/viewer.html?file=' + uri);
         document.getElementById('viewOrderIframe').style.display = 'block';
@@ -236,28 +192,13 @@ function loadPDF(fname) {
     });
 };
 
-function fileExists(target) {
-  console.log('file exists from index.js: ' + isExists);
-  var fs = require('fs');
-  var isExists = false;
-  var fstats = fs.statSync(target);
-  if (fstats) {
-    if (fstats.isFile()) {
-      isExists = true;
-    };
-  };
-  return isExists;
-};
 
 function resetViewOrderPane() {
-    ipcRenderer.send('consoleLog', 'resetting iframe');
-    var mySrc = $('#viewOrderIframe').attr('src');
-    ipcRenderer.send('consoleLog', 'variable mySrc is: ' + mySrc);
-    //$('#viewOrderIframe').attr('src', '');
-    if (mySrc) {
+//    var mySrc = $('#viewOrderIframe').attr('src');
+//    if (mySrc) {
         $('#viewOrderIframe').attr('src', '');
         $('#viewOrderIframe').hide();
-    };
+//    };
 };
 
 function saveOS() {
@@ -273,7 +214,6 @@ function saveOS() {
 
     document.getElementById("platformOS").setAttribute("data-value", platformOS);
     document.getElementById("dbDriver").setAttribute("data-value", dbDriver);
-    //ipcRenderer.send("consoleLog", "renderer says OS is: " + platformOS);
     if (platformOS == "win32") {
         // default authorization type to "W" (windows authentication)
         document.getElementById("loginAuthType").setAttribute("data-value", "W");
@@ -291,3 +231,6 @@ function showWindowsAuth() {
     $('#userNameText').prop('disabled', true);
     $('#userPswdText').prop('disabled', true); 
 }
+
+exports.resetViewOrderPane = resetViewOrderPane;
+exports.buildConfig = buildConfig;

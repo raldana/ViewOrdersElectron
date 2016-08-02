@@ -16,6 +16,7 @@ require('electron-reload')(__dirname, {
 // Module ipc for inter-process communication
 const ipcMain = require('electron').ipcMain;
 
+var isDone = false;
 
 // javascript files
 var jsconn = require('./js/connfuncs.js');
@@ -23,11 +24,16 @@ var jsbatch = require('./js/batchfuncs.js');
 var jsinvoice = require('./js/invoicefuncs.js');
 var jsorder = require('./js/orderfuncs.js');
 var jsfs = require('./js/fsfuncs.js');
+var jsindex = require('./js/index.js');
 
 // global shared object
 global.sharedObj = {
     tempFile: null,
-    platformOS: null
+    platformOS: null,
+    sessionKey: 0,
+    sqlConfig: null,
+    sqlAuthType: null,
+    okToShutdown: false
   };
 
 // get process platform
@@ -54,25 +60,21 @@ function createWindow () {
   // Open the DevTools.
   //mainWindow.webContents.openDevTools()
 
+  mainWindow.on('close', function () {
+    // delete any temp files we created
+    var tmpFile = global.sharedObj.tempFile
+    if (tmpFile) {
+        jsfs.deleteFile(null, tmpFile);
+    };
+    console.log("shutting down..." + "\n");
+  });
+
   // Emitted when the window is closed.
   mainWindow.on('closed', function () {
     // Dereference the window object, usually you would store windows
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
     mainWindow = null;
-    
-    
-    // delete any temp files we created
-    var tmpFile = global.sharedObj.tempFile
-    var tmpFileExists = false;
-    console.log('global tmpFile is: ' + tmpFile);
-    if (tmpFile) {
-      tmpFileExists = jsfs.fileExists(null, tmpFile);
-      if (tmpFileExists) {
-        console.log('deleting global tmpFile at shutdown: ' + tmpFile);
-        jsfs.deleteFile(null, tmpFile);
-      };
-    };
   });
 }
 
@@ -98,32 +100,22 @@ app.on('activate', function () {
   }
 });
 
-// You can use 'before-quit' instead of (or with) the close event
-app.on('before-quit', function (e) {
-    // release pdf source
-  mainWindow.webContents.send('shutdownApp');
-  console.log('sent shutdown message');
-});
-
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and require them here.
 
 // send batch
 ipcMain.on('sendBatch', function(event, orderNumber, orderType, config) {
-  console.log('sending batch...');
   jsbatch.sendBatch(event, orderNumber, orderType, config);
 });
 
 // test sql connection
 ipcMain.on('testConn', function(event, config) {
-  console.log('testing sql connection...');
   jsconn.testConn(config, event);   // js/connfuncs.js
+  // jsconn.testConnV8(config, event);   // js/connfuncs.js
 });
 
 // get order file name
 ipcMain.on('getOrderViewFileName', function(event, config, orderNumber, orderType) {
-  //console.log('getting file name...');
-  //console.log(config);
   if (orderType == 'A' || orderType == 'O') {
     jsinvoice.getInvoiceFileName(event, config, orderNumber);
   } else {
@@ -139,26 +131,22 @@ ipcMain.on('consoleLog', function(event, msg) {
 
 // check if file exists
 ipcMain.on('fileExists', function (event, fname) {
-  console.log('checking if file exists: ' + fname);
   jsfs.fileExists(event, fname);
 });
 
 
 // watch for file
 ipcMain.on('watchFile', function (event, fname) {
-  console.log('started watching for file: ' + fname);
   jsfs.watchFile(event, fname);
 });
 
 // copy file
 ipcMain.on('copyFile', function (event, sourceFile, targetFile) {
-  console.log('started copying file (' + sourceFile + ') to (' + targetFile + ')');
   jsfs.copyFile(event, sourceFile, targetFile);
 });
 
 // delete file
 ipcMain.on('deleteFile', function (event, targetFile) {
-  console.log('started deleting file: ' + targetFile);
   jsfs.deleteFile(event, targetFile);
 });
 
@@ -166,7 +154,11 @@ ipcMain.on('deleteFile', function (event, targetFile) {
 ipcMain.on('updateTempFileName', function (event, tempFile) {
   var newFile = __dirname + '\\web\\' + require('path').basename(tempFile);
   global.sharedObj.tempFile = newFile;
-  console.log('update temp file to: ' + global.sharedObj.tempFile);
 });
 
+// update global temp file name
+ipcMain.on('updateSessionKey', function (event, sessionKey) {
+  global.sharedObj.sessionKey = sessionKey;
+  console.log('Session Key is: ' + sessionKey + '\n');
+});
 

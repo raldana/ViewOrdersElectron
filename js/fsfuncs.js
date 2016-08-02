@@ -33,16 +33,12 @@ var watchFile = function(event, watchedFile) {
     // Add event listeners.
     watcher
     .once('add', function(path) {
-        console.log('File', path, 'has been added');
         event.sender.send('watchFileReply', path);
-        //watcher.unwatch(path);
         watcher.close();
     })
 
     .once('change', function(path) {
-        console.log('File', path, 'has been changed' + "\n");
         event.sender.send('watchFileReply', path);
-        //watcher.unwatch(path);
         watcher.close();
     });
 
@@ -78,11 +74,14 @@ var copyFile = function (event, source, target) {
   });
 
   function done(err) {
+    rd.close();
     if (err) {
       console.log(err);  
     } else {
         if (!cbCalled) {
         event.sender.send('copyFileReply', target);
+        // delete remote file after copying it
+        deleteFile(null, source);
         cbCalled = true;
       }
     }
@@ -92,34 +91,34 @@ var copyFile = function (event, source, target) {
 
 var deleteFile = function (event, target) {
     if (target) {
-        if (fileExists(target)) {
-            fs.closeSync(target);
+        try {
             fs.unlinkSync(target);
-            console.log("File deleted successfully!" + "\n");
-        } else {
-            console.log("File not found!" + "\n");
+        } catch (err) {
+            if (err == 'EPERM') {
+                console.log('could not delete file ' + target + '\n');
+            };
         };
     };
+
     if (event) {
         event.sender.send('deleteFileReply', target);
     };
 };
 
-
 var fileExists = function(event, target) {
-  var isExists = false;
-  if (target) {
-    var fstats = fs.statSync(target);
-    console.log(fstats);
-    if (fstats) {
-        isExists = true;
-/*
-        if (fstats.isFile()) {
-            isExists = true;
-        };
-*/
-    };
-  };
+    var isExists = false;
+
+    fs.stat(target, function(err, fileStat) {
+        if (err) {
+            if (err.code == 'ENOENT') {
+                console.log(target + ' does not exist' + '\n');
+            }
+        } else
+            if (fileStat.isFile()) {
+                isExists = true;
+        }
+    });
+
   return isExists;
 };
 
@@ -128,15 +127,3 @@ exports.copyFile = copyFile;
 exports.deleteFile = deleteFile;
 exports.fileExists = fileExists;
 
-/*
-fs.stat('foo.txt', function(err, stat) {
-    if(err == null) {
-        console.log('File exists');
-    } else if(err.code == 'ENOENT') {
-        // file does not exist
-        fs.writeFile('log.txt', 'Some log\n');
-    } else {
-        console.log('Some other error: ', err.code);
-    }
-});
-*/

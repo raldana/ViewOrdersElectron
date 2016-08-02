@@ -16,14 +16,21 @@ function notifyOutputName (event, folder, file) {
   
   if (folderName && imageName){
     outputName = folderName + imageName;
-    console.log('notifyOutputName - Output file is: ' + outputName + '\n');
+    //console.log('notifyOutputName - Output file is: ' + outputName + '\n');
+    
+    // send message with file name
     event.sender.send('orderViewFileNameReply', outputName);
+    
+    // reset the variables now that we are done
+    outputName = "";
+    folderName = "";
+    imageName = "";
   }
 };
 
 // call functions to get output folder and file name
 function getInvoiceFileName(event, config, orderNumber) {
-  console.log('getInvoiceFileName - orderNumber is: ' + orderNumber + '\n');
+  //console.log('getInvoiceFileName - orderNumber is: ' + orderNumber + '\n');
   sql.connect(config, function (err) {
     if (err !== null) {
         console.log(err);
@@ -48,7 +55,6 @@ function getOutputFileFolder(event, orderNumber, orderType, callback) {
   request.execute('odDisplayGetPrintImageFldrAP')
     .then( function(recordsets, PathFileName) {
       outName = request.parameters.PathFileName.value;
-      //console.log('Output folder name:' + outName);
       callback(event, outName, imageName) ;
     })
     .catch(function (err) {
