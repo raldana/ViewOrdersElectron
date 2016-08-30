@@ -53,6 +53,7 @@ let mainWindow;
 function createWindow () {
   // Create the browser window.
   mainWindow = new BrowserWindow({width: 1024, height: 768});
+  // mainWindow = new BrowserWindow({width: 1280, height: 1024});
 
   // and load the index.html of the app.
   mainWindow.loadURL(`file://${__dirname}/index.html`);
@@ -119,7 +120,7 @@ ipcMain.on('getOrderViewFileName', function(event, config, orderNumber, orderTyp
   if (orderType == 'A' || orderType == 'O') {
     jsinvoice.getInvoiceFileName(event, config, orderNumber);
   } else {
-    jsorder.getOrderFileName(event, orderNumber, orderType);
+    jsorder.getOrderFileName(event, config, orderNumber, orderType);
   };
   
 });
