@@ -6,17 +6,14 @@ var isFileDone = false;
 
 // connect to db
 function connectToDB () {
-    // get the server address and db name
+    // get the server address
     var myServerAddr = document.getElementById("serverAddrText").value;
-    var myDBName = document.getElementById("dbNameText").value;
     
     // update the text for the db connect modal
-    document.getElementById("dbNameLabel").innerHTML = myDBName;
     document.getElementById("serverAddrLabel").innerHTML = myServerAddr;
     
     // save to document properties
     document.getElementById("loginServerAddr").setAttribute("data-value", myServerAddr);
-    document.getElementById("loginDBName").setAttribute("data-value", myDBName);
 };
 
 // save the db config object (server name, db, etc.)
@@ -39,7 +36,7 @@ function saveConfig () {
 function testConn (loginAuthType) {
     var config = buildConfig();
     var myStatus = document.getElementById("connStatusText");
-    
+
     if (loginAuthType == "W" || (config.user && config.password && config.server && config.database)) {
         ipcRenderer.send('testConn', config);
     };
@@ -57,6 +54,11 @@ function testConn (loginAuthType) {
             document.getElementById("connectButton").innerHTML = "Connect";
         };
     });
+
+    ipcRenderer.once('populateDBSelector', function(event, dbList) {
+        populateDBSelector(dbList);
+    });
+
 };
 
 function isEmpty(obj) {
@@ -152,7 +154,6 @@ function buildConfig () {
         };
     };
 
-    //ipcRenderer.send('consoleLog', sqlConfig);
     return sqlConfig;
 };
 
@@ -165,6 +166,7 @@ function getDisplayFileName (orderNumber, orderType) {
         ipcRenderer.send('deleteFile', fileName);
         ipcRenderer.once('deleteFileReply', function(event, fileName) {
             ipcRenderer.send('watchFile', fileName);
+            ipcRenderer.send('consoleLog', 'Waiting for file: ' + fileName + '\n');
             ipcRenderer.once('watchFileReply', function(event, fileName) {
                 if (isFileDone == false) {
                     isFileDone = true;
@@ -231,6 +233,17 @@ function showWindowsAuth() {
     $('#userNameText').prop('disabled', true);
     $('#userPswdText').prop('disabled', true); 
 }
+
+// populate db selector
+function populateDBSelector(dbList) {
+    var options = '';
+    $.each(dbList, function(index, value) {
+        options += '<option value="' + value.name + '">' + value.name + '</option>';
+    });
+
+    $('#dbSelector').append(options);
+};
+
 
 exports.resetViewOrderPane = resetViewOrderPane;
 exports.buildConfig = buildConfig;

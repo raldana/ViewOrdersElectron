@@ -12,7 +12,6 @@ function updateGlobalSessionKey(updatedSessionKey) {
 
 // test the sql server connection
 function testConn(config, event) {
-  //console.log('testConn config: ' + config + '\n');
   var remote = require('electron').remote;
   var sql = require('mssql');
   var isConnected = true;
@@ -26,7 +25,11 @@ function testConn(config, event) {
       console.log(err);
     };
     connection.close();
-    notifyConnState(event, isConnected);
+    notifyConnState(event, isConnected, config.server);
+
+    if (isConnected) {
+      getDBList(config, event);
+    };
 
 /*
     // if we got good connection, delete any old session that existed,
@@ -71,9 +74,9 @@ function testConnV8(config, event) {
 };
 
 // reply that we have finished our connection test
-function notifyConnState (event, connState) {
+function notifyConnState (event, connState, serverName) {
   event.sender.send('testConnReply', connState);
-  console.log('Connection state: ' + connState);
+  console.log('Connection state (' + serverName + '): ' + connState + '\n');
 };
 
 // function to create new SQL session key
@@ -154,7 +157,42 @@ function deleteActiveSessionKey(sessionKey, config) {
 };
 
 
+// get database list from server
+function getDBList(config, event) {
+  var sql = require('mssql');
+  var options = '';
+
+  sql.connect(config, function (err) {
+    if (err !== null) {
+      console.log(err);
+    };
+
+    new sql.Request()
+    .query('Select [name] from master.dbo.sysdatabases where dbid > 4 order by [name]')
+    .then(function(recordset) {
+        populateDBSelector(event, recordset);
+        // console.dir(recordset);
+      })
+    .catch(function(err) {
+        console.log(err);
+      });
+
+    
+    sql.close();
+
+  });
+
+
+};
+
+// reply that we have finished our connection test
+function populateDBSelector (event, dbList) {
+  event.sender.send('populateDBSelector', dbList);
+};
+
+
 exports.testConn = testConn;
 exports.testConnV8 = testConnV8;
 exports.getActiveSessionKey = getActiveSessionKey;
 exports.deleteActiveSessionKey = deleteActiveSessionKey;
+//exports.getDBList = getDBList;

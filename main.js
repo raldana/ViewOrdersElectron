@@ -49,12 +49,13 @@ global.sharedObj.platformOS = platformOS;
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
 let mainWindow;
+let configWindow;
+let jobWindow;
 
 function createWindow () {
-  // Create the browser window.
+  // Create the order window.
   mainWindow = new BrowserWindow({width: 1024, height: 768});
-  // mainWindow = new BrowserWindow({width: 1280, height: 1024});
-
+  
   // and load the index.html of the app.
   mainWindow.loadURL(`file://${__dirname}/index.html`);
 
@@ -62,6 +63,15 @@ function createWindow () {
   //mainWindow.webContents.openDevTools()
 
   mainWindow.on('close', function () {
+    // close the config and job windows
+    if (configWindow) {
+      configWindow.close();
+    }
+
+    if (jobWindow) {
+      jobWindow.close();
+    }
+
     // delete any temp files we created
     var tmpFile = global.sharedObj.tempFile
     if (tmpFile) {
@@ -76,6 +86,38 @@ function createWindow () {
     // in an array if your app supports multi windows, this is the time
     // when you should delete the corresponding element.
     mainWindow = null;
+  });
+}
+
+function createExtraWindows() {
+  // Create the configs window.
+  configWindow = new BrowserWindow({width: 500, height: 400});
+  //configWindow.setMenu(null);
+
+  // Create the jobs window.
+  jobWindow = new BrowserWindow({width: 500, height: 500});
+  //jobWindow.setMenu(null);
+
+  // and load the config.html of the app.
+  configWindow.loadURL(`file://${__dirname}/config.html`);
+
+  // and load the job.html of the app.
+  jobWindow.loadURL(`file://${__dirname}/job.html`);
+
+  // Emitted when the window is closed.
+  configWindow.on('closed', function () {
+    // Dereference the window object, usually you would store windows
+    // in an array if your app supports multi windows, this is the time
+    // when you should delete the corresponding element.
+    configWindow = null;
+  });
+
+  // Emitted when the window is closed.
+  jobWindow.on('closed', function () {
+    // Dereference the window object, usually you would store windows
+    // in an array if your app supports multi windows, this is the time
+    // when you should delete the corresponding element.
+    jobWindow = null;
   });
 }
 
